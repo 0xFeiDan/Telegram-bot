@@ -8,7 +8,7 @@ from telethon import TelegramClient, events
 api_id = ''
 api_hash = ''
 username1 = '' #监控TG用户名
-username2 = 'yingheTWbot' #监控推特的TG 用户名
+username2 = 'yingheTWbot' #监控TG 用户名
 
 #定义信息 DBOT
 chain = "solana"
@@ -25,15 +25,15 @@ def dbot_buy(token_address,chain):
     data = {
         "chain": chain,  # 链条
         "pair": token_address,  # token地址
-        "walletId": "lx5ktxyu052ow1",  # 钱包id
+        "walletId": "",  # 钱包id
         "type": "buy",  # 买
-        "amountOrPercent": 0.5,  # 购买多少sol
+        "amountOrPercent": 1,  # 购买多少sol
         "priorityFee": 0.005,  # gas费
         "gasFeeDelta": "",  # 额外增加的gas (Gwei)，对EVM链有效
         "maxFeePerGas": "",  # 愿意支付的最大gas (Gwei)，对EVM链有效
         "jitoEnabled": False,  # 是否防夹
         "jitoTip": "",  # 贿赂费用
-        "maxSlippage": 0.2,  # 最大滑点（0.00-1.00）
+        "maxSlippage": 0.25,  # 最大滑点（0.00-1.00）
         "concurrentNodes": 3,  # 并发节点数（1-3）
         "retries": 10  # 失败后的重试次数（0-10）
     }
@@ -41,12 +41,17 @@ def dbot_buy(token_address,chain):
     response = requests.post(url, headers=headers, data=json.dumps(data))
 
     print(response.json())
+    data = response.json()
+    if data:
+        limitPrice_sell(token_address,3.5)  #设置挂单 3.5是成本的倍数
+
+
 
 def limitPrice_sell(token_address,multiple):
 
     #8Ey8maZF1JV6igUxVa6bv4P33cNRVFVWHmde8QaUSZeS可以替换为你的钱包 会通过API拿到你的购买成本
 
-    get_price = f"https://gmgn.ai/defi/quotation/v1/smartmoney/sol/walletstat/8Ey8maZF1JV6igUxVa6bv4P33cNRVFVWHmde8QaUSZeS?token_address={token_address}"
+    get_price = f"https://gmgn.ai/defi/quotation/v1/smartmoney/sol/walletstat/BPGHWxNGc41qjGbuDkwoq7z11pnBPuBVHWhAC2dSmL5i?token_address={token_address}"
     response = requests.get(get_price)
 
     # 解析响应的JSON数据
@@ -66,7 +71,7 @@ def limitPrice_sell(token_address,multiple):
     data = {
         "chain": "solana",
         "pair": token_address,
-        "walletId": "lx5ktxyu052ow1", #钱包ID
+        "walletId": "", #钱包ID
         "settings": [
             {
                 "enabled": True,
@@ -80,9 +85,9 @@ def limitPrice_sell(token_address,multiple):
                 "jitoEnabled": False,
                 "jitoTip": "",
                 "expireDelta": 360000000, #过期时间
-                "maxSlippage": 0.3,
-                "concurrentNodes": 3,
-                "retries": 10
+                "maxSlippage": 0.3,# 最大滑点（0.00-1.00）
+                "concurrentNodes": 3, # 并发节点数（1-3）
+                "retries": 10 # 失败后的重试次数（0-10）
             }
         ]
     }
@@ -99,6 +104,7 @@ async def main():
     processed_matches = set()  # 创建一个空的集合来存储已经处理过的 match
     @client.on(events.NewMessage(from_users=[username1, username2]))
     async def handler(event):
+        start_time = time.time()  # 记录开始时间
         print('Received message:', event.message.text)
         print('---------------------------------------------------------------')
         pattern = r'[A-Za-z0-9]{40,}'
@@ -107,8 +113,8 @@ async def main():
             if match not in processed_matches:  # 如果 match 还没有被处理过
                 print(match)
                 dbot_buy(match,chain)
-                time.sleep(10) #等待一下 后边可以判断买入成功然后挂限价单
-                limitPrice_sell(match,5) #1.合约地址  2.你购买成本的几倍卖出
+                end_time = time.time()  # 记录结束时间
+                print("执行时间：", end_time - start_time, "秒")  # 输出执行时间
                 processed_matches.add(match)  # 将 match 添加到已处理集合中
     await client.start()
 
