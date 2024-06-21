@@ -93,8 +93,10 @@ def limitPrice_sell(token_address,multiple):
 
 #监控TG
 client = TelegramClient('session_name', api_id, api_hash)
+
 async def main():
     # 假设 username1 和 username2 是你想要监控的两个用户
+    processed_matches = set()  # 创建一个空的集合来存储已经处理过的 match
     @client.on(events.NewMessage(from_users=[username1, username2]))
     async def handler(event):
         print('Received message:', event.message.text)
@@ -102,17 +104,19 @@ async def main():
         pattern = r'[A-Za-z0-9]{40,}'
         matches = re.findall(pattern, event.message.text)
         for match in matches:
-            print(match)
-            dbot_buy(match,chain)
-            time.sleep(10) #等待一下 后边可以判断买入成功然后挂限价单
-            limitPrice_sell(match,5) #1.合约地址  2.你购买成本的几倍卖出
+            if match not in processed_matches:  # 如果 match 还没有被处理过
+                print(match)
+                dbot_buy(match,chain)
+                time.sleep(10) #等待一下 后边可以判断买入成功然后挂限价单
+                limitPrice_sell(match,5) #1.合约地址  2.你购买成本的几倍卖出
+                processed_matches.add(match)  # 将 match 添加到已处理集合中
     await client.start()
 
     print('Listening for messages from', username1, 'and', username2)
 
     await client.run_until_disconnected()  # 持续监控
 
-
 loop = asyncio.get_event_loop()
 loop.run_until_complete(main())
+
 
